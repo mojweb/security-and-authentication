@@ -4,6 +4,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
+const encrypt = require("mongoose-encryption");
 
 const app = express();
 
@@ -15,10 +16,21 @@ mongoose.set('useUnifiedTopology', true);
 mongoose.connect("mongodb://localhost:27017/userDB", { useNewUrlParser: true });
 
 // ///setup a new user database
-const userSchema = {
+/// setup a proper mongoose schema(object created from the schema class)
+const userSchema = new mongoose.Schema({
     email: String,
     password: String
-};
+});
+
+/////encrypt using -  Secret String Instead of Two Keys
+///// https://www.npmjs.com/package/mongoose-encryption
+// var secret = process.env.SOME_LONG_UNGUESSABLE_STRING;
+const secret = "Thisisourlittlesecret.";
+///// encrypt the whole database
+// userSchema.plugin(encrypt, { secret: secret });
+///// Encrypt Only Certain Fields (just the password in this case)
+userSchema.plugin(encrypt, { secret: secret, encryptedFields: ['password'] });
+
 
 //// new mongoose Model for DB, with collection name "User", using the userSchema
 const User = new mongoose.model("User", userSchema);
