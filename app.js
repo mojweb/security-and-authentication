@@ -1,5 +1,8 @@
 //jshint esversion:6
 
+///// use enviroment variables to keep secrets safe 
+//////https://www.npmjs.com/package/dotenv
+require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
@@ -7,6 +10,10 @@ const mongoose = require("mongoose");
 const encrypt = require("mongoose-encryption");
 
 const app = express();
+
+/// you can log the api-key or/and secret from .env file
+console.log(process.env.API_KEY);
+console.log(process.env.SECRET);
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -25,11 +32,12 @@ const userSchema = new mongoose.Schema({
 /////encrypt using -  Secret String Instead of Two Keys
 ///// https://www.npmjs.com/package/mongoose-encryption
 // var secret = process.env.SOME_LONG_UNGUESSABLE_STRING;
-const secret = "Thisisourlittlesecret.";
+// const secret = "Thisisourlittlesecret."; /// move it to .env file
 ///// encrypt the whole database
 // userSchema.plugin(encrypt, { secret: secret });
 ///// Encrypt Only Certain Fields (just the password in this case)
-userSchema.plugin(encrypt, { secret: secret, encryptedFields: ['password'] });
+///replace secret with the .env secret, because we moved it in .env file
+userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
 
 
 //// new mongoose Model for DB, with collection name "User", using the userSchema
