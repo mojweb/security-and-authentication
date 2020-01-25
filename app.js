@@ -7,13 +7,13 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+const md5 = require("md5");
+
 
 const app = express();
 
-/// you can log the api-key or/and secret from .env file
-console.log(process.env.API_KEY);
-console.log(process.env.SECRET);
+
+console.log(md5("123456"));
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -29,15 +29,6 @@ const userSchema = new mongoose.Schema({
     password: String
 });
 
-/////encrypt using -  Secret String Instead of Two Keys
-///// https://www.npmjs.com/package/mongoose-encryption
-// var secret = process.env.SOME_LONG_UNGUESSABLE_STRING;
-// const secret = "Thisisourlittlesecret."; /// move it to .env file
-///// encrypt the whole database
-// userSchema.plugin(encrypt, { secret: secret });
-///// Encrypt Only Certain Fields (just the password in this case)
-///replace secret with the .env secret, because we moved it in .env file
-userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
 
 
 //// new mongoose Model for DB, with collection name "User", using the userSchema
@@ -59,7 +50,8 @@ app.post("/register", function (req, res) {
     ///create new user, using the userSchema and the input from register page form 
     const newUser = new User({
         email: req.body.username,
-        password: req.body.password
+        //// hash the password
+        password: md5(req.body.password)
     });
     ///// save the new registered user
     newUser.save(function (err) {
@@ -75,7 +67,7 @@ app.post("/register", function (req, res) {
 app.post("/login", function (req, res) {
     ///// we need to check two things, username, and pass, so we declare them here
     const userName = req.body.username;
-    const password = req.body.password;
+    const password = md5(req.body.password);
 
     //// here we check if the entered credentials exist in the userDB
     //// in collection "User", findOne registered email: thats same with the entered username
