@@ -7,13 +7,11 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const md5 = require("md5");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 
 const app = express();
-
-
-console.log(md5("123456"));
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -47,27 +45,34 @@ app.get("/register", function (req, res) {
 
 //// register the user, and save the input to userDB
 app.post("/register", function (req, res) {
-    ///create new user, using the userSchema and the input from register page form 
-    const newUser = new User({
-        email: req.body.username,
-        //// hash the password
-        password: md5(req.body.password)
+
+    //// Technique 2 (auto-gen a salt and hash): 
+    //// https://www.npmjs.com/package/bcrypt
+    bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
+        ///////// Store hash in your password DB. ////////////////
+        ///create new user, using the userSchema and the input from register page form 
+        const newUser = new User({
+            email: req.body.username,
+            //// hash the password
+            password: hash
+        });
+        ///// save the new registered user
+        newUser.save(function (err) {
+            if (err) {
+                console.log(err);
+            } else {
+                //// show the sicrets page only if/when user is registered
+                res.render("secrets");
+            }
+        });
     });
-    ///// save the new registered user
-    newUser.save(function (err) {
-        if (err) {
-            console.log(err);
-        } else {
-            //// show the sicrets page only if/when user is registered
-            res.render("secrets");
-        }
-    });
+
 });
 ///login the registered user
 app.post("/login", function (req, res) {
     ///// we need to check two things, username, and pass, so we declare them here
     const userName = req.body.username;
-    const password = md5(req.body.password);
+    const password = req.body.password;
 
     //// here we check if the entered credentials exist in the userDB
     //// in collection "User", findOne registered email: thats same with the entered username
@@ -77,15 +82,21 @@ app.post("/login", function (req, res) {
         } else {
             //// if there is a matching user found..
             if (foundUser) {
-                ////then check if that foundUser in DB.. has a (registered)password in DB, that matches the password entered on login page
-                if (foundUser.password === password) {
-                    ///if  all matches, show the "secret" page
-                    res.render("secrets");
-                }
+                ////then check if that foundUser in DB.. has a (registered)password -> hash in DB, with a hash that matches the hash from your password DB(foundUser.password).
+                // bcrypt.compare(myPlaintextPassword, hash, function (err, res) { 
+                bcrypt.compare(password, foundUser.password, function (err, result) {
+                    // if resault is true
+                    if (result === true) {
+                        ///if hash matches, show the "secret" page
+                        console.log("you got the password!!!");
+                        res.render("secrets");
+                    } else {
+                        console.log("wrong password!!!");
+                    }
+                });
             }
         }
     });
-
 });
 
 
