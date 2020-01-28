@@ -11,7 +11,9 @@ const session = require('express-session');
 const passport = require("passport");
 const passportLocalMongoose = require('passport-local-mongoose');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const FacebookStrategy = require('passport-facebook').Strategy;
 const findOrCreate = require("mongoose-findorcreate");
+
 
 
 const app = express();
@@ -43,7 +45,8 @@ mongoose.set('useCreateIndex', true);
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
-    googleId: String /// add an option to store the users googleID in to the database
+    googleId: String, /// add an option to store the users googleID in to the database
+    facebookId: String /// add an option to store the users facebookId in to the database
 });
 
 /// https://www.npmjs.com/package/passport-local-mongoose
@@ -78,21 +81,39 @@ passport.use(new GoogleStrategy({
     // clientID: GOOGLE_CLIENT_ID,
     // clientSecret: GOOGLE_CLIENT_SECRET,
     // callbackURL: "http://www.example.com/auth/google/callback"
-    clientID: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: "http://localhost:3000/auth/google/secrets"
     ///// this is a fix for the oauth to work after google+ is no more!!
     // userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
 },
     /// after being authenticated by google, find or create a new user to our database
     function (accessToken, refreshToken, profile, cb) {
-        console.log(profile);
+        // console.log(profile);
         User.findOrCreate({ googleId: profile.id }, function (err, user) {
             return cb(err, user);
         });
     }
 ));
 
+///*************************************************
+passport.use(new FacebookStrategy({
+    // clientID: FACEBOOK_APP_ID,
+    // clientSecret: FACEBOOK_APP_SECRET,
+    // callbackURL: "http://localhost:3000/auth/facebook/callback"
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: "http://localhost:3000/auth/facebook/secrets"
+},
+    function (accessToken, refreshToken, profile, cb) {
+        console.log(profile);
+        User.findOrCreate({ facebookId: profile.id }, function (err, user) {
+            console.log(err);
+            return cb(err, user);
+        });
+    }
+));
+///*************************************************
 //// show the pages when url is typed
 app.get("/", function (req, res) {
     res.render("home");
@@ -110,6 +131,18 @@ app.get("/auth/google/secrets",
         res.redirect("/secrets");
     });
 
+///*************************************************
+app.get("/auth/facebook",
+    passport.authenticate("facebook", { scope: ["email"] })
+);
+
+app.get("/auth/facebook/secrets",
+    passport.authenticate("facebook", { failureRedirect: "/login" }),
+    function (req, res) {
+        // Successful authentication, redirect home.
+        res.redirect("/secrets");
+    });
+///*************************************************
 app.get("/login", function (req, res) {
     res.render("login");
 });
