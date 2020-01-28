@@ -10,6 +10,8 @@ const mongoose = require("mongoose");
 const session = require('express-session');
 const passport = require("passport");
 const passportLocalMongoose = require('passport-local-mongoose');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const findOrCreate = require("mongoose-findorcreate");
 
 
 const app = express();
@@ -47,6 +49,8 @@ const userSchema = new mongoose.Schema({
 /// User.plugin(passportLocalMongoose);
 /// set our userSchema to use passportLocalMongoose as plugin
 userSchema.plugin(passportLocalMongoose);
+/// https://www.npmjs.com/package/mongoose-findorcreate
+userSchema.plugin(findOrCreate);
 
 //// new mongoose Model for DB, with collection name "User", using the userSchema
 const User = new mongoose.model("User", userSchema);
@@ -56,6 +60,24 @@ const User = new mongoose.model("User", userSchema);
 passport.use(User.createStrategy());
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
+
+/// google OAuth
+passport.use(new GoogleStrategy({
+    // clientID: GOOGLE_CLIENT_ID,
+    // clientSecret: GOOGLE_CLIENT_SECRET,
+    // callbackURL: "http://www.example.com/auth/google/callback"
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets"
+    ///// this is a fix for the oauth to work after google+ is no more!!
+    // userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+},
+    function (accessToken, refreshToken, profile, cb) {
+        User.findOrCreate({ googleId: profile.id }, function (err, user) {
+            return cb(err, user);
+        });
+    }
+));
 
 //// show the pages when url is typed
 app.get("/", function (req, res) {
