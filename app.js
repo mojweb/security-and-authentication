@@ -58,8 +58,19 @@ const User = new mongoose.model("User", userSchema);
 /// Simplified Passport/Passport-Local Configuration
 /// https://www.npmjs.com/package/passport-local-mongoose
 passport.use(User.createStrategy());
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+/// these do not work with Google OAuth
+// passport.serializeUser(User.serializeUser());
+// passport.deserializeUser(User.deserializeUser());
+/// BUT, these do work, .. http://www.passportjs.org/docs/configure/
+passport.serializeUser(function (user, done) {
+    done(null, user.id);
+});
+
+passport.deserializeUser(function (id, done) {
+    User.findById(id, function (err, user) {
+        done(err, user);
+    });
+});
 
 /// google OAuth
 passport.use(new GoogleStrategy({
@@ -72,7 +83,9 @@ passport.use(new GoogleStrategy({
     ///// this is a fix for the oauth to work after google+ is no more!!
     // userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
 },
+    /// after being authenticated by google, find or create a new user to our database
     function (accessToken, refreshToken, profile, cb) {
+        console.log(profile);
         User.findOrCreate({ googleId: profile.id }, function (err, user) {
             return cb(err, user);
         });
@@ -83,6 +96,19 @@ passport.use(new GoogleStrategy({
 app.get("/", function (req, res) {
     res.render("home");
 });
+
+/// as shown here... http://www.passportjs.org/packages/passport-google-oauth20/
+app.get("/auth/google",
+    passport.authenticate("google", { scope: ["profile"] })
+);
+/// authenticate the user localy, and save the session after being registered using google and redirected here
+app.get("/auth/google/secrets",
+    passport.authenticate("google", { failureRedirect: "/login" }),
+    function (req, res) {
+        // Successful authentication, redirect home.
+        res.redirect("/secrets");
+    });
+
 app.get("/login", function (req, res) {
     res.render("login");
 });
