@@ -42,7 +42,8 @@ mongoose.set('useCreateIndex', true);
 /// setup a proper mongoose schema(object created from the schema class)
 const userSchema = new mongoose.Schema({
     email: String,
-    password: String
+    password: String,
+    googleId: String /// add an option to store the users googleID in to the database
 });
 
 /// https://www.npmjs.com/package/passport-local-mongoose
