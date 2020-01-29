@@ -46,7 +46,8 @@ const userSchema = new mongoose.Schema({
     email: String,
     password: String,
     googleId: String, /// add an option to store the users googleID in to the database
-    facebookId: String /// add an option to store the users facebookId in to the database
+    facebookId: String, /// add an option to store the users facebookId in to the database
+    secret: String /// save the new secret from the user input.. in to DB
 });
 
 /// https://www.npmjs.com/package/passport-local-mongoose
@@ -106,7 +107,7 @@ passport.use(new FacebookStrategy({
     callbackURL: "http://localhost:3000/auth/facebook/secrets"
 },
     function (accessToken, refreshToken, profile, cb) {
-        console.log(profile);
+        // console.log(profile);
         User.findOrCreate({ facebookId: profile.id }, function (err, user) {
             console.log(err);
             return cb(err, user);
@@ -132,6 +133,8 @@ app.get("/auth/google/secrets",
     });
 
 ///*************************************************
+//// http://www.passportjs.org/packages/passport-facebook/
+//// http://www.passportjs.org/docs/facebook/
 app.get("/auth/facebook",
     passport.authenticate("facebook", { scope: ["email"] })
 );
@@ -149,14 +152,57 @@ app.get("/login", function (req, res) {
 app.get("/register", function (req, res) {
     res.render("register");
 });
+
 app.get("/secrets", function (req, res) {
-    /// if the user isAuthenticated, send/redirect him to secrets page
+    /// search for all the users that have a "secret" field that is not null
+    User.find({ "secret": { $ne: null } }, function (err, foundUsers) {
+        if (err) { /// if error.. log it
+            console.log(err);
+        } else {
+            if (foundUsers) { ///if there are such users
+                /// render the secrets page with the secrets found
+                res.render("secrets", { usersWithASecrets: foundUsers });
+            }
+        }
+    });
+});
+// app.get("/secrets", function (req, res) {
+//     //// if the user isAuthenticated, send/redirect him to secrets page
+//     if (req.isAuthenticated()) {
+//         res.render("secrets");
+//         /// else, redirect the user back to login page
+//     } else {
+//         res.redirect("login");
+//     }
+// });
+
+/// ako e authenticated.. renderiraj mu ja stranata submit, ako ne.. back to login
+app.get("/submit", function (req, res) {
     if (req.isAuthenticated()) {
-        res.render("secrets");
-        /// else, redirect the user back to login page
+        res.render("submit");
     } else {
         res.redirect("login");
     }
+});
+
+/// ovozmozi postiranje na secrets, i sejvnuvanje na inputot vo bazata na userot
+app.post("/submit", function (req, res) {
+    const submittedSecret = req.body.secret;
+    // console.log(req.user.id); /// log the user's id
+    /// find the user by his id
+    User.findById(req.user.id, function (err, foundUser) {
+        if (err) { /// if error.. log the error
+            console.log(err);
+        } else { /// if user is found, i negoviot secret ke bide submittedSecret
+            if (foundUser) {
+                foundUser.secret = submittedSecret;
+                foundUser.save(function () { /// save the secret
+                    res.redirect("/secrets");/// then redirect the user to see the secrets page
+                });
+            }
+        }
+    });
+
 });
 
 /// logout -> de-authenticate 
